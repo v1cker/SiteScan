@@ -3,24 +3,23 @@
 # -*- coding:utf-8 -*-
 
 import nmap
-from urllib.parse import urlparse
-<<<<<<< HEAD
-
-from scripts import Ftp
-=======
->>>>>>> b48090a64e299874ab424d042b7633900f626713
+from scripts.ftp import Ftp
+from database.database import Database
 
 
 class Port:
-    def __init__(self, ip):
-        self.ip = ip
+    def __init__(self):
         self.nm = nmap.PortScanner()
 
-    def scan(self):
+    def scan(self, ip):
         print('\n# 端口扫描...')
-        self.nm.scan(self.ip, arguments='-sT -P0 -sV --script=banner -p T:21-25,80-89,110,143,443,513,873,1080,1433,'
-                                        '1521,1158,3306-3308,3389,3690,5900,6379,7001,8000-8090,9000,9418,27017-27019,5'
-                                        '0060,111,11211,2049 --unprivileged')
+        self.nm.scan(ip, arguments='-sT -P0 -sV')
+
+        '''
+        nm.scan(ip, arguments='-sT -P0 -sV --script=banner -p T:21-25,80-89,110,143,443,513,873,1080,1433,'
+                                    '1521,1158,3306-3308,3389,3690,5900,6379,7001,8000-8090,9000,9418,27017-27019,5'
+                                    '0060,111,11211,2049 --unprivileged')
+        '''
 
         for host in self.nm.all_hosts():
             print('-------------------------------------------')
@@ -37,37 +36,31 @@ class Port:
                     print('%s\t%s\t%s\t%s\t%s' %
                           (port, self.nm[host][proto][port]['state'], self.nm[host][proto][port]['name'],
                            self.nm[host][proto][port]['product'], self.nm[host][proto][port]['version']))
-                # self.analysis(host, proto, ports)
-            print('\n')
 
-    def analysis(self, host, proto, ports):
-        for port in ports:
-            if port == 21 and self.nm[host][proto][port]['state'] == 'open':
-                print('ftp open')
-<<<<<<< HEAD
-                p = Ftp(self.ip)
-                p.run()
-=======
->>>>>>> b48090a64e299874ab424d042b7633900f626713
-            if port == 80 and self.nm[host][proto][port]['state'] == 'open':
-                print('http open')
-            if port == 3306 and self.nm[host][proto][port]['state'] == 'open':
-                print('mysql open')
-            if port == 6379 and self.nm[host][proto][port]['state'] == 'open':
-                print('redis open')
-            if port == 27017 and self.nm[host][proto][port]['state'] == 'open':
-                print('mongodb open')
-            if port == 7001 and self.nm[host][proto][port]['state'] == 'open':
-                print('WebLogic open')
-            if port == 8080 and self.nm[host][proto][port]['state'] == 'open':
-                print('Jboss open')
-            if port == 9080 and self.nm[host][proto][port]['state'] == 'open':
-                print(self.nm[host][proto][port]['name'] + ' open')
+                Database().insert_port(host, self.nm[host][proto])
+                # analysis(host, proto, ports)
 
-    def run(self):
-        self.scan()
-        # return self.nm
+                for port in ports:
+                    if port == 21 and self.nm[host][proto][port]['state'] == 'open':
+                        print('ftp open')
+                        p = Ftp(ip)
+                        p.run()
+
+                    if port == 80 and self.nm[host][proto][port]['state'] == 'open':
+                        print('http open')
+                    if port == 3306 and self.nm[host][proto][port]['state'] == 'open':
+                        print('mysql open')
+                    if port == 6379 and self.nm[host][proto][port]['state'] == 'open':
+                        print('redis open')
+                    if port == 27017 and self.nm[host][proto][port]['state'] == 'open':
+                        print('mongodb open')
+                    if port == 7001 and self.nm[host][proto][port]['state'] == 'open':
+                        print('WebLogic open')
+                    if port == 8080 and self.nm[host][proto][port]['state'] == 'open':
+                        print('Jboss open')
+                    if port == 9080 and self.nm[host][proto][port]['state'] == 'open':
+                        print(self.nm[host][proto][port]['name'] + ' open')
+
 
 if __name__ == '__main__':
-    s = Port(ip='122.194.115.170')
-    s.run()
+    Port().scan(ip='221.226.37.163')

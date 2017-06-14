@@ -7,6 +7,7 @@ import requests
 import threading
 import queue
 import time
+from database.database import Database
 
 
 class Sendir:
@@ -15,15 +16,16 @@ class Sendir:
         self.q = queue.Queue(0)
         self.thread_num = 3
         self.sensitive = []
+        self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:49.0) Gecko/20100101 Firefox/49.0'}
 
     def dirt(self):
         while not self.q.empty():
             try:
                 _dir = self.q.get()
                 url = self.target + _dir
-                r = requests.get(url, timeout=1, allow_redirects=False)
+                r = requests.get(url, timeout=2, allow_redirects=False)
 
-                if r.status_code == 200:
+                if r.status_code in [200, 403]:
                     self.sensitive.append(url)
 
                 time.sleep(0.1)
@@ -32,13 +34,9 @@ class Sendir:
 
     def run(self):
         try:
-            r = requests.get(self.target, timeout=1, allow_redirects=False)
             print('\n# 检测敏感目录...')
-            # headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:49.0) Gecko/20100101 Firefox/49.0'}
-            # with open('res.txt', 'w+') as file:
-                # file.write('sensitive direction:\n\n')
 
-            with open('D:/tools/python/SiteScan/dict/dir.txt', 'r') as file:
+            with open('/home/jasonsheh/Tools/python/SiteScan/dict/dir.txt', 'r') as file:
                 for eachline in file:
                     self.q.put(eachline.strip())
 
@@ -54,19 +52,15 @@ class Sendir:
             if len(self.sensitive) < 20:
                 for url in self.sensitive:
                     print(url)
+            Database().insert_sendir(self.sensitive)
             return self.sensitive
-        except:
-            print('\n无法检测目录')
+        except Exception as e:
+            print(e)
             return self.sensitive
 
 
 def main():
-<<<<<<< HEAD
-    s = Sendir(target='http://'+'chinac.com/')
-=======
-    s = Sendir(target='http://'+'oa.meizu.com')
->>>>>>> b48090a64e299874ab424d042b7633900f626713
-    s.run()
+    Sendir(target='http://dkxy.jit.edu.cn').run()
 
 if __name__ == '__main__':
     main()

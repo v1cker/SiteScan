@@ -25,6 +25,12 @@ class Crawler:
         # self.cap = webdriver.DesiredCapabilities.PHANTOMJS
         # self.cap["phantomjs.page.settings.loadImages"] = False  # 禁止加载图片
 
+    def init(self):
+        if not self.target.startswith('http://') and not self.target.startswith('https://'):
+            self.target = 'http://' + self.target
+        if not self.target.endswith('/'):
+            self.target += '/'
+
     def dynamic_conn(self, url):
         """
         动态
@@ -74,7 +80,10 @@ class Crawler:
         return res
 
     def static_conn(self, url):
-        r = requests.get(url, headers=self.header)
+        try:
+            r = requests.get(url, headers=self.header)
+        except requests.exceptions.ChunkedEncodingError:
+            return []
         pattern = re.compile(r'href="(.*?)"')
         return re.findall(pattern, r.text)
 
@@ -100,7 +109,11 @@ class Crawler:
 
                 if (url.startswith('http://') or url.startswith('https://')) and not url.startswith(self.target):
                     continue
-                if re.search('\.(css|jpg|JPG|png|pdf|js|gif|xls|doc|rar|ico|ppt)$', url) or re.search('javascript:', url):
+                if url.startswith('ftp://'):
+                    continue
+                if url.startswith('mailto:'):
+                    continue
+                if re.search('\.(css|jpg|JPG|png|pdf|js|gif|xls|doc|docx|rar|ico|ppt)$', url) or re.search('javascript:', url):
                     continue
                 if url.startswith('/'):
                     url = url[1:]
@@ -125,12 +138,14 @@ class Crawler:
                 self.url_set.append(i)
                 # self.q.put(i)
 
-            if urlparse(i).path == ('/' or ''):
+            # print(urlparse(i).path)
+            if urlparse(i).path in ['/', '']:
                 rule = ''
             elif len(urlparse(i).path.split('/')) == 2 and '?' in i:
                 rule = urlparse(i).path.split('/')[1][:3]
             else:
                 rule = urlparse(i).path.split('/')[1][:3]
+
             for path in urlparse(i).path.split('/')[1:]:
                 rule += str(len(path))  # 判断网址相似规则
 
@@ -162,9 +177,19 @@ class Crawler:
             self.filter(res)
 
     # almost done need improved
-    def run(self):
-        res = self.static_conn(self.target)
-        # res = self.dynamic_conn(self.target)
+    def scan(self):
+        self.init()
+        try:
+            r = requests.get(self.target, headers=self.header)
+            pattern = re.compile(r'href="(.*?)"')
+            res = re.findall(pattern, r.text)
+            self.target = r.url
+        except requests.exceptions.ConnectionError:
+            return self.url_set
+        except requests.exceptions.ReadTimeout:
+            return self.url_set
+        except requests.exceptions.ChunkedEncodingError:
+            return self.url_set
 
         res = self.get_url(res)
         if not res:
@@ -183,20 +208,22 @@ class Crawler:
         for item in threads:
             item.join()
 
-        print('\n# 扫描链接总数:' + str(len(self.url_set)))
+        if self.url_set:
+            print('\n# 扫描链接总数:' + str(len(self.url_set)))
 
-        self.urls.sort()
-        for url in self.url_set:
-            print(url)
+        '''
+            self.urls.sort()
+            for url in self.urls:
+                print(url)
+        '''
 
         # print(len(self.urls))
 
-        return self.url_set, self.urls
+        return self.urls
 
 
 def main():
-    s = Crawler(target='http://it.jit.edu.cn/')
-    s.run()
+    Crawler(target='http://it.jit.edu.cn/').scan()
 
 if __name__ == '__main__':
     main()

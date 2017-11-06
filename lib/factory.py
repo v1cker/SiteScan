@@ -2,79 +2,41 @@
 # __author__ = 'jasonsheh'
 # -*- coding:utf-8 -*-
 
-from lib.basicinfo import Info
+from database.database import Database
+
+from lib.subdomain import AllDomain
+from lib.sendir import SenDir
 from lib.crawler import Crawler
-from lib.sqltest import Sql
-from lib.sendir import Sendir
-from lib.xss import Xss
-from lib.struts2 import Struts2
 from lib.port import Port
+from lib.vul import Vul
+
+import requests
 
 
-class SiteScan:
-    def __init__(self, target):
-        self.target = target
-        self.ip = ''
-        self.domains = {}
-        self.server = ''
-        self.xss = []
-        self.sql = []
-        self.sensitive = []
-        self.url_set = []
-        self.urls = []
+def site_scan(domain):
+    if domain.startswith('http://www.'):
+        domain = domain[11:]
+    if domain.startswith('https://www.'):
+        domain = domain[12:]
+    if domain.startswith('http://'):
+        domain = domain[7:]
+    if domain.startswith('https://'):
+        domain = domain[8:]
+    if domain.startswith('www.'):
+        domain = domain[4:]
+    if domain.endswith('/'):
+        domain = domain[:-1]
 
-    def init(self):
-        """
-        规范目标url格式
-        format http://example.com
-        :return:
-        """
-        if (not self.target.startswith('http://')) and (not self.target.startswith('https://')):
-            self.target = 'http://' + self.target
-        if not self.target.endswith('/'):
-            self.target = self.target + '/'
+    # id = Database().insert_task(domain)
+    domains = AllDomain(domain).run()
 
-        print(self.target)
+    SenDir(domains).run()
 
-        # r = requests.get(self.target)
+    '''
+    Port(domains, id).run()
 
-    def site_scan(self):
-        self.init()
-        print('--------------------------------------------------')
-        self.basic_info()
-        # 漏洞测试
-        self.site_crawl()
-        if self.url_set:
-            self.sql_test()  # here test the sql injection
-            self.xss_test()
-            self.struts2()
-        self.sensitive_dir()
-        self.port_test()
-
-    def basic_info(self):
-        s = Info(self.target)
-        self.ip, self.server = s.run()
-
-    def site_crawl(self):
-        s = Crawler(self.target)
-        self.url_set, self.urls = s.run()
-
-    def sql_test(self):
-        s = Sql(self.urls)
-        self.sql = s.run()
-
-    def xss_test(self):
-        s = Xss(self.urls)
-        self.xss = s.run()
-
-    def struts2(self):
-        s = Struts2(self.urls)
-        s.run()
-
-    def port_test(self):
-        s = Port(self.ip)
-        s.run()
-
-    def sensitive_dir(self):
-        s = Sendir(self.target)
-        self.sensitive = s.run()
+    print('漏洞扫描')
+    for domain in domains:
+        url = Crawler(domain).scan()
+        Vul(url, id).run()
+    '''

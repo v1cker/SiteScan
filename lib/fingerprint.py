@@ -5,46 +5,70 @@
 import sqlite3
 import re
 import requests
+import sys
+sys.path.append('C:\Code\SiteScan')
+
+from setting import user_path
 
 
 class FingerPrint:
-    def __init__(self, url):
-        self.conn = sqlite3.connect('/home/jasonsheh/Tools/python/SiteScan/db/Rules.db')
+    def __init__(self, urls):
+        self.conn = sqlite3.connect(user_path + '/db/Rules.db')
         self.cursor = self.conn.cursor()
-        self.target = url
+        self.targets = urls
+        self.result = {}
+        sql = 'select * from application'
+        self.cursor.execute(sql)
+        self.rules = self.cursor.fetchall()
 
     def init(self):
-        if self.target.startswith('http://www.'):
-            self.target = self.target[11:]
-        elif self.target.startswith('https://www.'):
-            self.target = self.target[12:]
-        elif self.target.startswith('http://'):
+        if self.target.startswith('http://'):
             self.target = self.target[7:]
         elif self.target.startswith('https://'):
             self.target = self.target[8:]
+        self.target = self.target.strip('/')
 
     def scan(self):
+        finger_print = ''
         self.init()
-        r = requests.get('http://' + self.target)
-        sql = 'select * from application'
-        self.cursor.execute(sql)
-        rules = self.cursor.fetchall()
-        for item in rules:
+        try:
+            r = requests.get('http://' + self.target, timeout=3)
+            for item in self.rules:
+                app = item[1]
+                rules = item[2].split(', ')
+                # print(app, rule)
+                for rule in rules:
+                    rule = rule.split(':', 1)
+                    place = rule[0]
+                    _rule = rule[1]
+                    if place in ['body']:
+                        if -1 != r.text.find(_rule):
+                            finger_print += app+' '
+                            break
+                    elif place in ['title']:
+                        if re.search('<title>.*?'+_rule+'.*?</title>', r.text):
+                            finger_print += app+' '
+                            break
+                    elif place in ['header', 'server']:
+                        if -1 != str(r.headers).find(_rule):
+                            finger_print += app+' '
+                            break
+            self.result[self.target] = finger_print
 
-            app = item[1]
-            rule = item[2].split(', ')
-            # print(app, rule)
-            for _rule in rule:
-                _rule = _rule.split(':', 1)
-                place = _rule[0]
-                __rule = _rule[1]
-                if place in ['body', 'title']:
-                    if -1 != r.text.find(__rule):
-                        print(app)
-                elif place in ['header', 'server']:
-                    if -1 != str(r.headers).find(__rule):
-                        print(app)
+        except requests.exceptions.ConnectionError:
+            self.result[self.target] = ''
+        except requests.exceptions.ReadTimeout:
+            self.result[self.target] = ''
+        except requests.exceptions.TooManyRedirects:
+            self.result[self.target] = ''
+
+    def run(self):
+        print('服务指纹识别')
+        for self.target in self.targets:
+            self.scan()
+            # Database().insert_finger(self.target, self.result[self.target])
+        return self.result
+
 
 if __name__ == '__main__':
-    FingerPrint(url='www.ecshop.tv').scan()
-
+    FingerPrint(urls=['http://www.jit.edu.cn/']).run()

